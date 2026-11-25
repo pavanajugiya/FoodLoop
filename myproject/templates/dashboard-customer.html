@@ -331,7 +331,7 @@
                 </tr>
               </thead>
               <tbody>
-                {% for o in active_orders %}
+                {% for o in my_orders %}
                 <tr>
                   <td><strong>#{{ o.order_number }}</strong></td>
                   <td class="food-name">{{ o.food_name }}</td>
@@ -340,7 +340,9 @@
                   <td><span class="badge badge-neutral">{{ o.get_delivery_type_display }}</span></td>
                   <td><span class="badge badge-neutral" style="font-family:monospace;font-size:.85rem;background:#e2e8f0;">{{ o.otp_code }}</span></td>
                   <td>
-                    {% if o.status == 'in_transit' %}
+                    {% if o.status == 'delivered' %}
+                      <span class="badge badge-success">✓ Order Delivered</span>
+                    {% elif o.status == 'in_transit' %}
                       <span class="badge badge-purple">Out for Delivery</span>
                     {% elif o.status == 'ready' %}
                       <span class="badge badge-warning">Ready for Pickup</span>
@@ -354,7 +356,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                  <td colspan="8" style="text-align:center;padding:30px;color:#94a3b8;">No active orders currently. Click "Browse Food" to buy discounted meals!</td>
+                  <td colspan="8" style="text-align:center;padding:30px;color:#94a3b8;">No orders currently. Click "Browse Food" to buy discounted meals!</td>
                 </tr>
                 {% endfor %}
               </tbody>
@@ -440,7 +442,7 @@
         </div>
         <div class="panel-body">
           <div class="cards-grid">
-            {% for o in active_orders %}
+            {% for o in my_orders %}
             <div class="order-card cust-order-card" id="cust-order-card-{{ o.id }}">
               <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
                 <div>
@@ -458,8 +460,8 @@
                     {% endif %}
                   </div>
                 </div>
-                <span class="badge {% if o.status == 'in_transit' %}badge-purple{% elif o.status == 'ready' %}badge-warning{% elif o.status == 'delivered' %}badge-success{% else %}badge-info{% endif %}">
-                  {{ o.get_status_display }}
+                <span class="badge {% if o.status == 'delivered' %}badge-success{% elif o.status == 'in_transit' %}badge-purple{% elif o.status == 'ready' %}badge-warning{% else %}badge-info{% endif %}" {% if o.status == 'delivered' %}style="background:#dcfce7;color:#15803d;border:1px solid #86efac;font-weight:700;"{% endif %}>
+                  {% if o.status == 'delivered' %}✓ Order Delivered{% else %}{{ o.get_status_display }}{% endif %}
                 </span>
               </div>
 
@@ -479,6 +481,18 @@
               </div>
 
               <!-- Customer Verification OTP (NGO/Customer Side) -->
+              {% if o.status == 'delivered' %}
+              <div style="background:#f0fdf4;border:1.5px solid #86efac;padding:8px 12px;border-radius:8px;margin-bottom:12px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                  <span style="font-size:.78rem;color:#166534;font-weight:700;">Delivery Verification OTP:</span>
+                  <div style="display:flex;align-items:center;gap:6px;">
+                    <span class="badge badge-neutral" style="font-family:monospace;font-size:.95rem;font-weight:800;letter-spacing:1.5px;background:#059669;color:#fff;">{{ o.otp_code }}</span>
+                    <span style="background:#dcfce7;color:#15803d;padding:2px 8px;font-size:.72rem;font-weight:700;border-radius:4px;">✓ Verified</span>
+                  </div>
+                </div>
+                <div style="font-size:.7rem;color:#15803d;margin-top:3px;">Handover verified and completed successfully · Order delivered</div>
+              </div>
+              {% else %}
               <div style="background:#f0fdf4;border:1.5px dashed #86efac;padding:8px 12px;border-radius:8px;margin-bottom:12px;">
                 <div style="display:flex;justify-content:space-between;align-items:center;">
                   <span style="font-size:.78rem;color:#166534;font-weight:700;">Delivery Verification OTP (Customer Side):</span>
@@ -489,11 +503,17 @@
                 </div>
                 <div style="font-size:.7rem;color:#15803d;margin-top:3px;">Share with delivery volunteer upon arrival to verify handover</div>
               </div>
+              {% endif %}
 
               <!-- Card Action Bar -->
               <div style="margin-top:auto;padding-top:10px;border-top:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
                 <div>
-                  {% if o.status == 'in_transit' %}
+                  {% if o.status == 'delivered' %}
+                    <div style="display:inline-flex;align-items:center;gap:6px;color:#16a34a;font-size:.82rem;font-weight:700;">
+                      <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#16a34a;"></span>
+                      Order Delivered (Safe Handover Complete)
+                    </div>
+                  {% elif o.status == 'in_transit' %}
                     <div style="display:inline-flex;align-items:center;gap:6px;color:#7c3aed;font-size:.82rem;font-weight:700;">
                       <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#7c3aed;"></span>
                       Out for Delivery (On the way)
@@ -511,9 +531,14 @@
                   {% endif %}
                 </div>
                 <div style="display:flex;gap:8px;align-items:center;">
-                  <a href="/track/?q={{ o.order_number }}" class="btn btn-sm btn-primary" style="display:inline-flex;align-items:center;gap:5px;font-size:.82rem;font-weight:700;padding:6px 14px;border-radius:6px;text-decoration:none;background:#0288D1;color:#fff;border:none;">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
-                    Live GPS Tracker
+                  <a href="/track/?q={{ o.order_number }}" class="btn btn-sm {% if o.status == 'delivered' %}btn-outline{% else %}btn-primary{% endif %}" style="display:inline-flex;align-items:center;gap:5px;font-size:.82rem;font-weight:700;padding:6px 14px;border-radius:6px;text-decoration:none;{% if o.status == 'delivered' %}background:#f0fdf4;color:#15803d;border:1px solid #86efac;{% else %}background:#0288D1;color:#fff;border:none;{% endif %}">
+                    {% if o.status == 'delivered' %}
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                      Delivery Details
+                    {% else %}
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+                      Live GPS Tracker
+                    {% endif %}
                   </a>
                   {% if o.status != 'in_transit' and o.status != 'delivered' %}
                     <button class="btn btn-sm btn-outline" style="color:#ef4444;border-color:#fca5a5;padding:6px 12px;font-size:.82rem;" onclick="cancelOrder({{ o.id }});">Cancel</button>
@@ -522,7 +547,7 @@
               </div>
             </div>
             {% empty %}
-            <div style="grid-column:1/-1;text-align:center;padding:40px;color:#94a3b8;">No active orders right now. Explore "Browse Food" to place an order!</div>
+            <div style="grid-column:1/-1;text-align:center;padding:40px;color:#94a3b8;">No orders right now. Explore "Browse Food" to place an order!</div>
             {% endfor %}
           </div>
         </div>

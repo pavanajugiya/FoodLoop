@@ -167,7 +167,7 @@ class CustomerOrder(models.Model):
         ('confirmed', 'Confirmed'),
         ('ready', 'Ready for Pickup'),
         ('in_transit', 'Out for Delivery'),
-        ('delivered', 'Delivered / Completed'),
+        ('delivered', 'Order Delivered'),
         ('cancelled', 'Cancelled'),
     )
     order_number = models.CharField(max_length=50, unique=True, db_index=True)

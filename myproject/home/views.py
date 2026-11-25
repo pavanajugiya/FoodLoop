@@ -2495,12 +2495,23 @@ def ngo_confirm_delivery(request, pickup_id):
 
 
         pickup.status = 'delivered'
-
         pickup.delivered_at = timezone.now()
-
         pickup.save()
 
-
+        # Sync linked CustomerOrder if any
+        linked_deliv_orders = CustomerOrder.objects.filter(
+            Q(order_number=pickup.tracking_code) | Q(food_listing=pickup.food_listing)
+        ).exclude(status='cancelled')
+        for ldo in linked_deliv_orders:
+            ldo.status = 'delivered'
+            ldo.save()
+            if ldo.customer:
+                AppNotification.objects.create(
+                    user=ldo.customer,
+                    title=f"Order Delivered: #{ldo.order_number}",
+                    message=f"Your order for {ldo.food_name} has been safely delivered! Enjoy your meal.",
+                    notif_type='order'
+                )
 
         # Update food listing
 
@@ -2706,6 +2717,14 @@ def dashboard_customer(request):
 
 
 
+    # Auto-synchronize CustomerOrder status with PickupDelivery status
+    # If a linked PickupDelivery is delivered, ensure the CustomerOrder is marked delivered
+    delivered_codes = list(PickupDelivery.objects.filter(status='delivered').values_list('tracking_code', flat=True))
+    delivered_listing_ids = list(PickupDelivery.objects.filter(status='delivered').values_list('food_listing_id', flat=True))
+    CustomerOrder.objects.filter(
+        Q(order_number__in=delivered_codes) | Q(food_listing_id__in=delivered_listing_ids)
+    ).exclude(status__in=['delivered', 'cancelled']).update(status='delivered')
+
     # Orders
 
     orders_qs = CustomerOrder.objects.filter(
@@ -2719,6 +2738,8 @@ def dashboard_customer(request):
     active_orders = orders_qs.exclude(status__in=['delivered', 'cancelled'])
 
     order_history = orders_qs.filter(status='delivered')
+
+    my_orders = orders_qs.exclude(status='cancelled')
 
 
 
@@ -2747,6 +2768,8 @@ def dashboard_customer(request):
         'available_surplus': available_surplus,
 
         'active_orders': active_orders,
+
+        'my_orders': my_orders,
 
         'order_history': order_history,
 
@@ -3844,12 +3867,23 @@ def volunteer_update_status(request, pickup_id):
 
 
             pickup.status = 'delivered'
-
             pickup.delivered_at = timezone.now()
-
             pickup.save()
 
-
+            # Sync linked CustomerOrder if this pickup was a customer order
+            linked_deliv_orders = CustomerOrder.objects.filter(
+                Q(order_number=pickup.tracking_code) | Q(food_listing=pickup.food_listing)
+            ).exclude(status='cancelled')
+            for ldo in linked_deliv_orders:
+                ldo.status = 'delivered'
+                ldo.save()
+                if ldo.customer:
+                    AppNotification.objects.create(
+                        user=ldo.customer,
+                        title=f"Order Delivered: #{ldo.order_number}",
+                        message=f"Your order for {ldo.food_name} has been safely delivered! Enjoy your meal.",
+                        notif_type='order'
+                    )
 
             if pickup.food_listing:
 
@@ -5002,12 +5036,23 @@ def api_verify_delivery(request, pickup_id):
 
 
         pickup.status = 'delivered'
-
         pickup.delivered_at = timezone.now()
-
         pickup.save()
 
-
+        # Sync linked CustomerOrder if this pickup was a customer order
+        linked_deliv_orders = CustomerOrder.objects.filter(
+            Q(order_number=pickup.tracking_code) | Q(food_listing=pickup.food_listing)
+        ).exclude(status='cancelled')
+        for ldo in linked_deliv_orders:
+            ldo.status = 'delivered'
+            ldo.save()
+            if ldo.customer:
+                AppNotification.objects.create(
+                    user=ldo.customer,
+                    title=f"Order Delivered: #{ldo.order_number}",
+                    message=f"Your order for {ldo.food_name} has been safely delivered! Enjoy your meal.",
+                    notif_type='order'
+                )
 
         if pickup.food_listing:
 
